@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  cp_cve_search:
+    build: .
+    image: cp_cve_search:latest
+    env_file:
+      - .env      
+    networks:
+      - labnet
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.cve.rule=Host(`cve.forhomeuseonly.com`)
+      - traefik.http.routers.cve.entrypoints=websecure
+      - traefik.http.services.cve.loadbalancer.server.port=8080
+      - traefik.http.routers.cve.tls.certresolver=letsencrypt
+networks:
+  labnet:
+    external: true
