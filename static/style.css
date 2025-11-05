@@ -1,0 +1,152 @@
+/* --- Global Styles & Fonts --- */
+body {
+    /* Use Roboto as the primary font, falling back to a clean system stack */
+    font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f7f6; /* Light gray page background */
+    color: #333;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 24px 32px; /* Add a bit more padding */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* --- Typography & Links --- */
+h1 {
+    /* Mimic the corporate page title */
+    font-size: 28px;
+    font-weight: 500;
+    color: #111;
+    border-bottom: none; /* Remove the old border */
+    margin-bottom: 24px;
+}
+
+h3 { /* "Search Results" header */
+    font-weight: 500;
+    color: #222;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+a {
+    /* Standard link color */
+    color: #D9006C; /* <-- UPDATED */
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* --- Search Box --- */
+.search-box {
+    display: flex;
+    gap: 0; /* Remove gap to join button and input */
+    margin-bottom: 20px;
+}
+
+#cve-input {
+    flex-grow: 1;
+    padding: 10px 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px; /* Round left corners */
+    box-shadow: none;
+    transition: border-color 0.2s ease;
+}
+#cve-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.2);
+}
+
+#search-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 0 4px 4px 0; /* Round right corners */
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+#search-button:hover {
+    background-color: #0056b3;
+}
+
+/* --- Content & Tables --- */
+#results-container, #publications-container {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.loading {
+    font-style: italic;
+    color: #777;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 14px;
+}
+th {
+    background-color: #f9f9f9;
+    font-weight: 500;
+}
+
+/* --- Result Card (CVE Search) --- */
+.result-card {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.result-card h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #D9006C; /* <-- UPDATED */
+    font-size: 18px;
+    font-weight: 500;
+}
+.result-card p {
+    margin: 8px 0; /* Increase spacing */
+    line-height: 1.6;
+    font-size: 14px;
+}
+.result-card strong {
+    color: #111;
+    font-weight: 500;
+    margin-right: 5px;
+}
+.result-card .cve-list a {
+    margin-right: 5px; /* Space out CVE links */
+}
+.result-card .vuln-systems {
+    font-family: monospace;
+    font-size: 13px;
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+}
+
+/* --- Severity Colors --- */
+.advisory-severity-critical {color:#cc0000;}
+.advisory-severity-high {color:#FF6600;}
+.advisory-severity-medium {color:#006600;}
+.advisory-severity-low {color:#0000FF;}
