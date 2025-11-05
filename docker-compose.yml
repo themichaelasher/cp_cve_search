@@ -4,7 +4,7 @@ services:
     build: .
     image: cp_cve_search:latest
     env_file:
-      - .env      
+      - stack.env      
     networks:
       - labnet
     labels:
