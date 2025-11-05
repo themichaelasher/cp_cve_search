@@ -9,6 +9,9 @@ More information can be found in the following documentation:
 
 > **Warning:** I'm not a developer so a lot of help came from Google's Gemini. It's probably not the most securely developed tool.
 
+## Screenshot
+
+(screenshot.png)
 ---
 
 ## Configuration
