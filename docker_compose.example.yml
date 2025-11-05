@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  cp_cve_search:
+    build: .
+    image: cp_cve_search:latest
+    env_file:
+      - .env      
+    ports:
+      - "8080:8080"
