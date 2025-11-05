@@ -11,18 +11,14 @@ More information can be found in the following documentation:
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 This application is configured entirely through environment variables. Before running the application, you **must** create a `.env` file in the root of the project.
 
 1. Create your API key via the Infinity Portal. 
-* https://portal.checkpoint.com/dashboard/settings/api-keys
+   * https://portal.checkpoint.com/dashboard/settings/api-keys
 
-2.  Create a file named `.env`:
-    ```bash
-    touch .env
-    ```
-3.  Add the following variables to the file, filling in your specific credentials:
+2.  Create a file named `.env` and add the following variables to the file, filling in your specific credentials:
 
     ```ini
     # --- .env file ---
@@ -36,10 +32,7 @@ This application is configured entirely through environment variables. Before ru
     ```
 ---
 
-## 🏃‍♀️ Running the Application
-
-There are two primary ways to run this application. 
-
+## Running the Application
 ### Method 1: Using Docker Compose
 
 This is the simplest way to get the application and all its dependencies running.
