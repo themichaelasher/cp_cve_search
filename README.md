@@ -35,9 +35,8 @@ This application is configured entirely through environment variables. Before ru
 ## Running the Application
 ### Method 1: Using Docker Compose
 
-This is the simplest way to get the application and all its dependencies running.
-
-*  **Build and run the container:**
+* Rename the `docker-compose.example.yml` to `docker-compose.yml`
+* Build and run the container:
     *(This will automatically load the `.env` file and map port 8080)*
     ```bash
     docker-compose up -d
