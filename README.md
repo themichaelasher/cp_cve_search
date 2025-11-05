@@ -49,14 +49,15 @@ This is the simplest way to get the application and all its dependencies running
     ```bash
     docker-compose up -d
     ```
-To stop the application, run:
-```bash
-docker-compose down
-``` 
+* To stop the application, run:
+   ```bash
+   docker-compose down
+   ``` 
+
 ### Method 2: Running directly with Python
 
 1. Clone the repository
-2. Setup the proper environment
+2. Setup the python environment
 ```bash
 user$ python -m venv venv
 user$ . venv/bin/activate
@@ -69,6 +70,7 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://127.0.0.1:8080
 Press CTRL+C to quit
 ```
+
 The application will now be running and accessible at `http://localhost:8080`.
 
 
