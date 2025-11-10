@@ -9,19 +9,20 @@
 <body>
     <div class="container">
         <h1>Infinity Portal - CVE Lookup</h1>
-        See <i><a href="https://support.checkpoint.com/results/sk/sk184153">sk184153</a></i> for more details.
-        <br>
         <div class="search-box">
             <input type="text" id="cve-input" placeholder="e.g., CVE-2023-1234">
             <button id="search-button">Search</button>
         </div>
 
         <div id="results-container">
-            </div>
+        </div>
 
         <div id="publications-container">
             <p class="loading">Loading publications...</p>
-            </div>
+        </div>
+
+        <div>See <i><a href="https://support.checkpoint.com/results/sk/sk184153">sk184153</a></i> for more details.</div>
+
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
