@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   cp_cve_search:
     image: cp_cve_search:latest
