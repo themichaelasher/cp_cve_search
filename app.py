@@ -10,9 +10,9 @@ env_file = find_dotenv(filename='stack.env', usecwd=True, raise_error_if_not_fou
 
 if env_file:
     load_dotenv(env_file)
-    app.logger.info(f"Loaded environment variables from: {env_file}")
+    ## app.logger.info(f"Loaded environment variables from: {env_file}")
 else:
-    app.logger.warning("Configuration file (.env or stack.env) not found.")
+    ## app.logger.warning("Configuration file (.env or stack.env) not found.")
     load_dotenv() # Fallback to load from default location just in case
 
 app = Flask(__name__)
