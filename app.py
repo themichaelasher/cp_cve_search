@@ -18,12 +18,12 @@ TOKEN_INFO = {
 }
 
 # --- Configuration ---
-BASE_URL = os.getenv("REMOTE_API_BASE_URL")
-CLIENT_ID = os.getenv("INITIAL_CLIENT_ID")
-ACCESS_ID = os.getenv("INITIAL_ACCESS_ID")
+BASE_URL = os.getenv("IP_REMOTE_URL")
+CLIENT_ID = os.getenv("IP_CLIENT_ID")
+ACCESS_ID = os.getenv("IP_ACCESS_ID")
 
 if not BASE_URL:
-    raise EnvironmentError("REMOTE_API_BASE_URL not set in .env file.")
+    raise EnvironmentError("IP_REMOTE_URL not set in .env file.")
 
 ## ---------------------------------
 ## NEW & REFACTORED AUTH FUNCTIONS
@@ -39,7 +39,7 @@ def _perform_login(force_new=False):
     
     # 1. Prepare credentials (using .env as the source)
     if not CLIENT_ID or not ACCESS_ID:
-        app.logger.error("Missing INITIAL_CLIENT_ID or INITIAL_ACCESS_ID in .env")
+        app.logger.error("Missing IP_CLIENT_ID or IP_ACCESS_ID in .env")
         return False, {"error": "Server credentials not configured."}
 
     # 2. Make the remote API call
