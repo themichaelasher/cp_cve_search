@@ -2,14 +2,18 @@ import os
 import requests
 import time # For tracking token age
 from flask import Flask, request, jsonify, render_template
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv 
+from s1c_api import SecondaryAPIClient
 
-# Load environment variables from .env file
-load_dotenv()
+# Accomodate stack.env if using portainer. 
+env_file = find_dotenv(filename='stack.env', usecwd=True, raise_error_if_not_found=False)
 
-# --- NEW IMPORT ---
-from s1c_api import SecondaryAPIClient # Import the client we created
-# ------------------
+if env_file:
+    load_dotenv(env_file)
+    app.logger.info(f"Loaded environment variables from: {env_file}")
+else:
+    app.logger.warning("Configuration file (.env or stack.env) not found.")
+    load_dotenv() # Fallback to load from default location just in case
 
 app = Flask(__name__)
 
