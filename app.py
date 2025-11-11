@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# --- NEW IMPORT ---
+from s1c_api import SecondaryAPIClient # Import the client we created
+# ------------------
+
 app = Flask(__name__)
 
 # --- Global Token Storage ---
@@ -32,7 +36,6 @@ if not BASE_URL:
 def _perform_login(force_new=False):
     """
     Internal function to perform the actual login to the remote service.
-    This is now separate so it can be called by any function, not just the route.
     'force_new=True' will force a new login even if token seems valid.
     """
     global TOKEN_INFO
@@ -66,7 +69,7 @@ def _perform_login(force_new=False):
         app.logger.error(f"Remote login connection error: {e}")
         return False, {"error": "Failed to connect to remote auth service.", "details": str(e)}
 
-## 🔒 Internal Token Helper (NOW WITH EXPIRY CHECK)
+## Internal Token Helper (NOW WITH EXPIRY CHECK)
 def get_active_token():
     """
     Retrieves the currently stored token.
@@ -96,7 +99,7 @@ def get_active_token():
 ## FLASK ROUTES
 ## ---------------------------------
 
-## 🏠 1. NEW Homepage Route
+## 1. NEW Homepage Route
 @app.route('/')
 def index():
     """
@@ -105,32 +108,27 @@ def index():
     """
     # This check ensures we have a valid token *before* loading the page
     if not get_active_token():
-        return "Error: Could not authenticate with remote service. Check server logs and .env file.", 500
+        return "Error: Could not authenticate with primary remote service. Check server logs and .env file.", 500
         
     # Render the index.html file from the 'templates' folder
     return render_template('index.html')
 
 
-## 🔑 2. Login Route (Now simplified)
+## 2. Login Route (Now simplified)
 @app.route('/login', methods=['GET', 'POST'])
 def remote_login():
     """
-    Manually triggers a new login.
-    Useful for testing or if the client wants to force a refresh.
+    Manually triggers a new login to the primary service.
     """
-    # We now check for credentials from the request (POST/GET)
-    # OR fallback to the .env file.
-    # For this app, we'll just use the internal one.
     success, data = _perform_login(force_new=True)
     
     if success:
-        return jsonify({"status": "Login successful and token stored internally."}), 200
+        return jsonify({"status": "Primary login successful and token stored internally."}), 200
     else:
         return jsonify(data), 500
 
 
-## 📚 3. Get Latest Publications Route
-## 📚 3. Get Latest Publications Route
+## 3. Get Latest Publications Route
 @app.route('/publications', methods=['GET'])
 def get_publications():
     """ Fetches publications using the internal token. """
@@ -153,8 +151,6 @@ def get_publications():
         return jsonify(response.json()), 200
 
     except requests.exceptions.HTTPError as e:
-        # --- NEW: Catch 4xx/5xx errors from the remote service ---
-        # This is likely what's happening (e.g., 401, 404, 503)
         app.logger.error(f"REMOTE HTTP Error on /publications: {e}")
         status_code = e.response.status_code if e.response is not None else 500
         
@@ -166,7 +162,6 @@ def get_publications():
         }), status_code
 
     except requests.exceptions.RequestException as e:
-        # --- Catches connection errors, timeouts, DNS errors ---
         app.logger.error(f"Connection Error on /publications: {e}")
         
         # This is a true 503 (we couldn't connect)
@@ -175,13 +170,18 @@ def get_publications():
             "details": str(e)
         }), 503
 
-## 🛡️ 4. Get Protections by CVE Route
+
+## 4. Get Protections by CVE Route (MODIFIED FOR FALLBACK & SOURCE)
 @app.route('/protections', methods=['GET', 'POST'])
 def get_protections():
-    """ Fetches protection info for a CVE, using the internal token. """
+    """ 
+    Fetches protection info for a CVE using the primary service. 
+    If no results are found, it falls back to the secondary service (S1C),
+    and adds a 'source_label' field to the results.
+    """
     auth_token = get_active_token()
     if not auth_token:
-        return jsonify({"error": "No active authentication token."}), 401
+        return jsonify({"error": "No active authentication token for primary service."}), 401
 
     cve_id = None
     if request.method == 'POST':
@@ -192,17 +192,84 @@ def get_protections():
     if not cve_id:
         return jsonify({"error": "Missing 'cve_id' in JSON body or query parameters"}), 400
 
+    # --- 1. Try Primary API ---
+    primary_error = None
     try:
         url = f"{BASE_URL}/app/ipsinfoapp/protections/by-cve/"
         headers = {'Authorization': f'Bearer {auth_token}'}
         params = {'cve_id': cve_id}
         
-        # This is the GET request to the remote service
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        return jsonify(response.json()), 200
+        
+        primary_results = response.json()
+        
+        # Check if the primary API returned results
+        if primary_results and isinstance(primary_results, list) and len(primary_results) > 0:
+            app.logger.info(f"Primary API found {len(primary_results)} results for {cve_id}.")
+            
+            # --- NEW: ADD PRIMARY SOURCE LABEL ---
+            for item in primary_results:
+                item["source_label"] = "IPS Protections Database - Infinity Portal"
+            # ------------------------------------
+            
+            return jsonify(primary_results), 200
+        
+        # If no results, proceed to fallback
+        app.logger.info(f"Primary API returned no results for {cve_id}. Attempting Secondary API fallback.")
+
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": "Failed to fetch protections", "details": str(e)}), 503
+        primary_error = e # Store the error, but continue to fallback
+        app.logger.error(f"Primary API error for {cve_id}: {e}. Falling back to Secondary API.")
+
+    # --- 2. FALLBACK TO SECONDARY API (S1C) ---
+    try:
+        secondary_client = SecondaryAPIClient(app.logger)
+        secondary_results = secondary_client.search_threat_protections(cve_id)
+        
+        if secondary_results and isinstance(secondary_results, list) and len(secondary_results) > 0:
+            app.logger.info(f"Secondary API found {len(secondary_results)} results for {cve_id}.")
+            
+            # --- NEW: ADD SECONDARY SOURCE LABEL ---
+            for item in secondary_results:
+                item["source_label"] = "Smart-1 Cloud Threat Protection Lookup"
+            # ---------------------------------------
+            
+            return jsonify(secondary_results), 200
+        
+        # --- 3. Final Failure / No Results ---
+        app.logger.info(f"Both APIs found no results for {cve_id}.")
+        
+        # If the primary service had an error, report that error
+        if primary_error:
+            status_code = getattr(primary_error.response, 'status_code', 503) 
+            return jsonify({
+                "error": "Failed to connect to primary service, and secondary found no results.", 
+                "primary_details": str(primary_error),
+                "status_code": status_code
+            }), status_code
+
+        # If primary service worked but returned empty list, and secondary also returned empty list.
+        return jsonify([]), 200 
+
+    except Exception as secondary_error:
+        # Catch any unexpected error during secondary API process (e.g., config error, bad login)
+        app.logger.error(f"Unexpected error during Secondary API process: {secondary_error}")
+        
+        # Prioritize the primary API's error if one occurred
+        if primary_error:
+            status_code = getattr(primary_error.response, 'status_code', 503) 
+            return jsonify({
+                "error": "Failed to connect to primary service, and secondary service failed too.", 
+                "primary_details": str(primary_error),
+                "secondary_error": str(secondary_error)
+            }), status_code
+        
+        # If primary was just empty, and secondary failed, return 500 for the secondary failure
+        return jsonify({
+            "error": "Primary API returned no results, and secondary service failed.",
+            "secondary_error": str(secondary_error)
+        }), 500
 
 
 # --- Run the Flask App ---

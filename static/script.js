@@ -44,17 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const severity = escapeHTML(item.severity_level) || 'N/A';
                 const severityClass = severity ? `advisory-severity-${severity.toLowerCase()}` : '';
 
-                // --- 🚨 NEW ROBUST CVE ARRAY HANDLING ---
-                let cveArray = []; // Start with an empty array
+                // --- ROBUST CVE ARRAY HANDLING ---
+                let cveArray = []; 
                 if (Array.isArray(item.cve)) {
-                    // It's already an array, use it
                     cveArray = item.cve;
                 } else if (item.cve) {
-                    // It's something else (like a string), wrap it in an array
                     cveArray = [item.cve];
                 }
-                // Now cveArray is guaranteed to be an array, so .map() will work
-                // --- END NEW LOGIC ---
+                // --- END LOGIC ---
 
                 // Build CVE links
                 const cveLinks = cveArray.map(cveId => {
@@ -67,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cardHTML = `
                     <div class="result-card">
                         <h4>${escapeHTML(item.protection_name)}</h4>
+                        <p><strong>Source:</strong> ${escapeHTML(item.source_label || 'N/A')}</p> 
                         <p><strong>Severity:</strong> <span class="${severityClass}">${severity}</span></p>
                         <p><strong>Confidence:</strong> ${escapeHTML(item.confidence_level)}</p>
                         <p><strong>Description:</strong> ${escapeHTML(item.protection_description)}</p>
