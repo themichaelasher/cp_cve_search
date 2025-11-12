@@ -11,12 +11,15 @@ More information can be found in the following documentation:
 > **Warning:** I'm not a developer so a lot of help came from Google's Gemini. It's probably not the most securely developed tool.
 
 <details>
-<summary><h2  style="display:inline-block">Screenshots</h2></summary>
-<details>
-<summary>Initial Landing Page</summary>
-![Landing Page](screenshots/start-page.png)
-</summary>
-</details>
+<summary><h2 style="display:inline-block">Screenshots</h2></summary>
+
+  <details>
+    <summary>Initial Landing Page</summary>
+    
+    ![Landing Page](screenshots/start-page.png)
+  </details>
+
+
 </details>
 ---
 
