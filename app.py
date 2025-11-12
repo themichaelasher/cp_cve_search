@@ -33,10 +33,6 @@ ACCESS_ID = os.getenv("IP_ACCESS_ID")
 if not BASE_URL:
     raise EnvironmentError("IP_REMOTE_URL not set in .env file.")
 
-## ---------------------------------
-## NEW & REFACTORED AUTH FUNCTIONS
-## ---------------------------------
-
 def _perform_login(force_new=False):
     """
     Internal function to perform the actual login to the remote service.
@@ -279,3 +275,4 @@ def get_protections():
 # --- Run the Flask App ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=False)
+
