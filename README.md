@@ -17,6 +17,7 @@ More information can be found in the following documentation:
     <summary>Initial Landing Page</summary>
     
     ![Landing Page](screenshots/start-page.png)
+    
   </details>
 
 
