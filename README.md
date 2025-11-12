@@ -1,5 +1,7 @@
 # Check Point CVE Search
 
+> **Warning:** I'm not a developer so a lot of help came from Google's Gemini. It's probably not the most securely developed tool. 
+
 This is a simple demo to search IPS Protections via the Infinity Portal and/or R82 management APIs. 
 
 More information can be found in the following documentation:
@@ -13,8 +15,6 @@ More information can be found in the following documentation:
 - https://sc1.checkpoint.com/documents/latest/APIs
 - https://sc1.checkpoint.com/documents/R82/WebAdminGuides/EN/CP_R82_SecurityManagement_AdminGuide/Content/Topics-SECMG/Managing-Security-through-API.htm
 - https://sc1.checkpoint.com/documents/R82/WebAdminGuides/EN/CP_R82_SecurityManagement_AdminGuide/Content/Topics-SECMG/Configuring_Authentication_through_an_API_Key.htm?tocpath=Managing%20Security%20through%20API%7C_____2
-
-> **Warning:** I'm not a developer so a lot of help came from Google's Gemini. It's probably not the most securely developed tool.
 
 <details>
 <summary><h2 style="display:inline-block">Screenshots</h2></summary>
