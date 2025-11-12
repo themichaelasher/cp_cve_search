@@ -4,9 +4,15 @@ This is a simple demo to search IPS Protections via the Infinity Portal and/or R
 
 More information can be found in the following documentation:
 
-* https://sc1.checkpoint.com/documents/Infinity_Portal/WebAdminGuides/EN/Infinity-Portal-Admin-Guide/Content/Topics-Infinity-Portal/API-Keys.htm
-* https://support.checkpoint.com/results/sk/sk184153
-* https://app.swaggerhub.com/apis-docs/Check-Point/infinity-portal-api
+### IPS Publication API and Infinity Portal
+- https://sc1.checkpoint.com/documents/Infinity_Portal/WebAdminGuides/EN/Infinity-Portal-Admin-Guide/Content/Topics-Infinity-Portal/API-Keys.htm
+-  https://support.checkpoint.com/results/sk/sk184153
+-  https://app.swaggerhub.com/apis-docs/Check-Point/infinity-portal-api
+
+### Smart-1 Cloud information:
+- https://sc1.checkpoint.com/documents/latest/APIs
+- https://sc1.checkpoint.com/documents/R82/WebAdminGuides/EN/CP_R82_SecurityManagement_AdminGuide/Content/Topics-SECMG/Managing-Security-through-API.htm
+- https://sc1.checkpoint.com/documents/R82/WebAdminGuides/EN/CP_R82_SecurityManagement_AdminGuide/Content/Topics-SECMG/Configuring_Authentication_through_an_API_Key.htm?tocpath=Managing%20Security%20through%20API%7C_____2
 
 > **Warning:** I'm not a developer so a lot of help came from Google's Gemini. It's probably not the most securely developed tool.
 
