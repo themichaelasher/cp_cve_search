@@ -14,7 +14,7 @@ More information can be found in the following documentation:
 <summary><h2  style="display:inline-block">Screenshots</h2></summary>
 <details>
 <summary>Initial Landing Page</summary>
-![image](/screenshots/start-page.png)
+![image](screenshots/start-page.png)
 </summary>
 </details>
 </details>
