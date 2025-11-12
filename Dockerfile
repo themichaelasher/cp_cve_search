@@ -1,5 +1,5 @@
 # Step 1: Start from a lightweight official Python image based on Alpine
-FROM python:3.11-alpine
+FROM python:3-alpine
 
 # Step 2: Set the working directory inside the container
 WORKDIR /app
