@@ -173,3 +173,40 @@ class SecondaryAPIClient:
             self._logout()
 
         return []
+
+    def get_ips_status(self):
+        """
+        Retrieves the installed IPS database version from the secondary API.
+        Performs login, status query, and mandatory logout.
+        """
+        if not self._login():
+            return {"error": "Failed to log in to Secondary API for status check."}
+
+        try:
+            status_url = self.base_url + "/web_api/v2/show-ips-status"
+
+            headers = {
+                'Content-Type': 'application/json',
+                'X-chkp-sid': str(self.session_id)
+            }
+
+            self.logger.info("Querying Secondary API for IPS status.")
+            response = requests.post(status_url, json={}, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Extract and normalize the relevant fields
+            return {
+                "installed_version": data.get("installed-version"),
+                "last_updated_time": data.get("last-updated", {}).get("iso-8601"),
+                "update_available": data.get("update-available", False)
+            }
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Secondary API IPS status query error: {e}")
+            return {"error": f"Failed to fetch IPS status: {e}"}
+
+        finally:
+            self.logger.info("Ensuring logout after IPS status check.")
+            self._logout()

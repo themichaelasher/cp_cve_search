@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CVE Search</title>
+    <title>CVE Lookup</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Infinity Portal - CVE Lookup</h1>
+        <h1>CVE Lookup</h1>
+        
         <div class="search-box">
             <input type="text" id="cve-input" placeholder="e.g., CVE-2023-1234">
             <button id="search-button">Search</button>
@@ -17,12 +18,15 @@
         <div id="results-container">
         </div>
 
-        <div id="publications-container">
-            <p class="loading">Loading publications...</p>
-        </div>
-
-        <div>See <i><a href="https://support.checkpoint.com/results/sk/sk184153">sk184153</a></i> for more details.</div>
-
+        <details id="status-details"> 
+            <summary id="status-summary-line">
+                <p class="loading" style="display: inline;">Loading configuration status...</p>
+            </summary>
+            
+            <div id="status-container" style="padding-top: 10px;">
+                </div>
+        </details>
+        
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
