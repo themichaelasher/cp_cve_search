@@ -1,6 +1,7 @@
 # Check Point CVE Search
 
-This is a simple demo to search IPS Protections via the Infinity Portal using the IPS publications API. 
+This is a simple demo to search IPS Protections via the Infinity Portal and/or R82 management APIs. 
+
 More information can be found in the following documentation:
 
 * https://sc1.checkpoint.com/documents/Infinity_Portal/WebAdminGuides/EN/Infinity-Portal-Admin-Guide/Content/Topics-Infinity-Portal/API-Keys.htm
@@ -9,8 +10,14 @@ More information can be found in the following documentation:
 
 > **Warning:** I'm not a developer so a lot of help came from Google's Gemini. It's probably not the most securely developed tool.
 
-## Screenshot
-![image](screenshot.png)
+<details>
+<summary><h2  style="display:inline-block">Screenshots</h2></summary>
+<details>
+<summary>Initial Landing Page</summary>
+![image](/screenshots/start-page.png)
+</summary>
+</details>
+</details>
 ---
 
 ## Configuration
@@ -24,13 +31,18 @@ This application is configured entirely through environment variables. Before ru
 
     ```ini
     # --- .env file ---
-    
-    # The Infinity Portal tenant 
-    REMOTE_API_BASE_URL=https://cloudinfra-gw.portal.checkpoint.com (or the proper tenant URL)
-    
-    # Your credentials for the remote API 
-    INITIAL_CLIENT_ID=your-client-id-goes-here
-    INITIAL_ACCESS_ID=your-access-key-goes-here
+    ## Environment variables in use for accessing the Infinity
+    ## Portal IPS Publications API
+
+    IP_REMOTE_URL=https://<API ENDPOINT>.portal.checkpoint.com
+    IP_CLIENT_ID=<client id from Infinity Portal IPS Publications Account key>
+    IP_ACCESS_ID=<access id from Infinity Portal IPS Publications Account key>
+
+    ## These are the environment variables needed if Smart-1 Cloud  
+    ## is expected to be searched as well.
+
+    # S1C_URL="https://<smart-1-cloud-tenant-url>/context/"
+    # S1C_APIKEY="user api key created from SmartConsole"
     ```
 ---
 
