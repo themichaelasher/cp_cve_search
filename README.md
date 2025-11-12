@@ -106,6 +106,3 @@ Press CTRL+C to quit
 The application will now be running and accessible at `http://localhost:8080`.
 
 </details>
-
-
-
