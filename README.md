@@ -12,19 +12,33 @@ More information can be found in the following documentation:
 
 <details>
 <summary><h2 style="display:inline-block">Screenshots</h2></summary>
-
-  <details>
-    <summary>Initial Landing Page</summary>
-    
-    ![Landing Page](screenshots/start-page.png)
-    
-  </details>
-
-
+<ul>
+<details>
+    <summary>Initial Landing Page</summary>    
+    <img src="screenshots/start-page.png" alt="Landing Page">    
+</details> 
+<details>
+    <summary>API Status</summary>    
+    <img src="screenshots/api-status.png" alt="API Status">    
 </details>
----
+<details>
+    <summary>Response from IPS Publication lookup</summary>    
+    <img src="screenshots/ips-publication-lookup.png" alt="IPS Publication Lookup">    
+</details>
+<details>
+    <summary>Response from Smart-1 Cloud</summary>    
+    <img src="screenshots/smart-1-cloud-lookup.png" alt="Smart-1 Cloud lookup">    
+</details>
+<details>
+    <summary>CVE Protection is not found</summary>    
+    <img src="screenshots/cve-not-found.png" alt="CVE Protection unavailable">    
+</details>
+</ul>
+</details>
 
-## Configuration
+
+<details>
+<summary><h2 style="display:inline-block">Configuration</h2></summary>
 
 This application is configured entirely through environment variables. Before running the application, you **must** create a `.env` file in the root of the project.
 
@@ -49,8 +63,10 @@ This application is configured entirely through environment variables. Before ru
     # S1C_APIKEY="user api key created from SmartConsole"
     ```
 ---
+</details>
 
-## Running the Application
+<details>
+<summary><h2 style="display:inline-block">Running the application</h2></summary>
 ### Method 1: Using Docker Compose
 
 * Rename the `docker-compose.example.yml` to `docker-compose.yml`
@@ -83,4 +99,4 @@ Press CTRL+C to quit
 
 The application will now be running and accessible at `http://localhost:8080`.
 
-
+</details>
