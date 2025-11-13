@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchButton = document.getElementById('search-button');
     const resultsContainer = document.getElementById('results-container');
     
-    // Target the div inside <details>
+    // Target the specific div inside the new <details> element
     const statusContainer = document.getElementById('status-container'); 
-    // Target the new <summary> ID
+    // Target the new <summary> ID for the main status line
     const statusSummaryLine = document.getElementById('status-summary-line'); 
 
     // Helper function for escaping HTML
@@ -37,9 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- 1. Handle CVE Search (MODIFIED FOR MULTI-CVE) ---
+    // --- 1. Handle CVE Search (MODIFIED FOR NEW RESPONSE OBJECT) ---
     async function searchProtections() {
-        // 🚨 NEW: Input Parsing Logic
+        // 🚨 Input Parsing Logic
         const rawInput = cveInput.value.trim();
         resultsContainer.innerHTML = ''; // Clear previous results
 
@@ -68,14 +68,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!normalizedCve.startsWith('CVE-')) {
                     normalizedCve = `CVE-${normalizedCve}`;
                 }
-                validCveIds.push(normalizedCve);
+                // Only add unique CVEs
+                if (!validCveIds.includes(normalizedCve)) {
+                    validCveIds.push(normalizedCve);
+                }
             } else {
-                // It's an invalid format
                 invalidCveIds.push(trimmedInput);
             }
         });
 
-        // 🚨 NEW: Handle Validation Results
+        // 🚨 Handle Validation Results
         if (validCveIds.length === 0) {
             resultsContainer.innerHTML = `<p style="color: red;">No valid CVE IDs found. Invalid formats: ${invalidCveIds.join(', ')}</p>`;
             return;
@@ -88,10 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsContainer.innerHTML += `<p style="color: orange; font-size: 14px;">(Skipped invalid inputs: ${invalidCveIds.join(', ')})</p>`;
         }
         
-        // --- End New Parsing Logic ---
-
         try {
-            // 🚨 NEW: Send POST request with JSON body (array of CVEs)
+            // Send POST request with JSON body (array of CVEs)
             const response = await fetch(`/protections`, {
                 method: 'POST',
                 headers: {
@@ -100,52 +100,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ cve_ids: validCveIds }) // Send the array
             });
 
+            // 🚨 NEW: Expect a JSON object: { found_protections: [...], unfound_cves: [...] }
             const data = await response.json();
 
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to fetch protections.');
             }
             
-            resultsContainer.innerHTML += '<h3>Search Results</h3>';
+            // Clear loading text
+            resultsContainer.innerHTML = '<h3>Search Results</h3>';
+            
+            const foundProtections = data.found_protections || [];
+            const unfoundCves = data.unfound_cves || [];
 
-            if (!Array.isArray(data) || data.length === 0) {
-                resultsContainer.innerHTML += '<p>No protections found for the specified CVE(s).</p>';
-                return;
+            // --- 1. Render all FOUND protections (the cards) ---
+            if (foundProtections.length > 0) {
+                foundProtections.forEach(item => {
+                    
+                    const severity = escapeHTML(item.severity_level) || 'N/A';
+                    const severityClass = severity ? `advisory-severity-${severity.toLowerCase()}` : '';
+
+                    let cveArray = []; 
+                    if (Array.isArray(item.cve)) {
+                        cveArray = item.cve;
+                    } else if (item.cve) {
+                        cveArray = [item.cve];
+                    }
+
+                    const cveLinks = cveArray.map(cveId => {
+                        const escapedCveId = escapeHTML(cveId);
+                        const url = `https://nvd.nist.gov/vuln/detail/${escapedCveId}`;
+                        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapedCveId}</a>`;
+                    }).join(', ');
+
+                    const cardHTML = `
+                        <div class="result-card">
+                            <h4>${escapeHTML(item.protection_name)}</h4>
+                            <p><strong>Source:</strong> ${escapeHTML(item.source_label || 'N/A')}</p> 
+                            <p><strong>Severity:</strong> <span class="${severityClass}">${severity}</span></p>
+                            <p><strong>Confidence:</strong> ${escapeHTML(item.confidence_level)}</p>
+                            <p><strong>Description:</strong> ${escapeHTML(item.protection_description)}</p>
+                            <p><strong>Advisory:</strong> <a href="${escapeHTML(item.protection_advisory_url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(item.protection_advisory_url)}</a></p>
+                            <p><strong>Covered CVEs:</strong> <span class="cve-list">${cveLinks || 'N/A'}</span></p> 
+                            <p><strong>Vulnerable Systems:</strong></p>
+                            <div class="vuln-systems">${escapeHTML(item.vulnerable_systems)}</div>
+                        </div>
+                    `;
+                    resultsContainer.innerHTML += cardHTML;
+                });
             }
 
-            data.forEach(item => {
+            // --- 2. Render all UNFOUND CVEs (the links) ---
+            if (unfoundCves.length > 0) {
+                resultsContainer.innerHTML += '<p>No protections found for the following CVEs:</p>';
                 
-                const severity = escapeHTML(item.severity_level) || 'N/A';
-                const severityClass = severity ? `advisory-severity-${severity.toLowerCase()}` : '';
-
-                let cveArray = []; 
-                if (Array.isArray(item.cve)) {
-                    cveArray = item.cve;
-                } else if (item.cve) {
-                    cveArray = [item.cve];
-                }
-
-                const cveLinks = cveArray.map(cveId => {
+                // 🚨 FIX: Create an <li> for each unfound CVE link
+                let unfoundLinksList = unfoundCves.map(cveId => {
                     const escapedCveId = escapeHTML(cveId);
                     const url = `https://nvd.nist.gov/vuln/detail/${escapedCveId}`;
-                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapedCveId}</a>`;
-                }).join(', ');
+                    const link = `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapedCveId}</a>`;
+                    return `<li>${link}</li>`; // Wrap in <li>
+                }).join(''); // Join with no separator
 
-                const cardHTML = `
-                    <div class="result-card">
-                        <h4>${escapeHTML(item.protection_name)}</h4>
-                        <p><strong>Source:</strong> ${escapeHTML(item.source_label || 'N/A')}</p> 
-                        <p><strong>Severity:</strong> <span class="${severityClass}">${severity}</span></p>
-                        <p><strong>Confidence:</strong> ${escapeHTML(item.confidence_level)}</p>
-                        <p><strong>Description:</strong> ${escapeHTML(item.protection_description)}</p>
-                        <p><strong>Advisory:</strong> <a href="${escapeHTML(item.protection_advisory_url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(item.protection_advisory_url)}</a></p>
-                        <p><strong>Covered CVEs:</strong> <span class="cve-list">${cveLinks || 'N/A'}</span></p> 
-                        <p><strong>Vulnerable Systems:</strong></p>
-                        <div class="vuln-systems">${escapeHTML(item.vulnerable_systems)}</div>
-                    </div>
-                `;
-                resultsContainer.innerHTML += cardHTML;
-            });
+                // Wrap all <li> items in a <ul>
+                resultsContainer.innerHTML += `<ul class="unfound-cve-list">${unfoundLinksList}</ul>`;
+            }
+            
+            // --- 3. Handle case where nothing was found at all ---
+            if (foundProtections.length === 0 && unfoundCves.length === 0) {
+                 resultsContainer.innerHTML += '<p>No protections found for the specified CVE(s).</p>';
+            }
 
         } catch (error) {
             resultsContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
@@ -156,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     cveInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter') {
-            searchProteCTIONS(); // Typo in original file, fixed to searchProtections
+            searchProtections();
         }
     });
 
