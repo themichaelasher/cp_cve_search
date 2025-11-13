@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchButton = document.getElementById('search-button');
     const resultsContainer = document.getElementById('results-container');
     
-    // Target the div inside <details> for detailed content
+    // Target the div inside <details>
     const statusContainer = document.getElementById('status-container'); 
-    // Target the new <summary> ID for the main status line
+    // Target the new <summary> ID
     const statusSummaryLine = document.getElementById('status-summary-line'); 
 
     // Helper function for escaping HTML
@@ -37,48 +37,79 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- 1. Handle CVE Search (WITH VALIDATION) ---
+    // --- 1. Handle CVE Search (MODIFIED FOR MULTI-CVE) ---
     async function searchProtections() {
-        let cveId = cveInput.value.trim();
+        // 🚨 NEW: Input Parsing Logic
+        const rawInput = cveInput.value.trim();
         resultsContainer.innerHTML = ''; // Clear previous results
 
-        if (!cveId) {
-            resultsContainer.innerHTML = '<p style="color: red;">Please enter a CVE ID.</p>';
+        if (!rawInput) {
+            resultsContainer.innerHTML = '<p style="color: red;">Please enter one or more CVE IDs.</p>';
             return;
         }
         
-        // Define the Regular Expression for validation
+        // Split by comma, space, or a combination
+        const cveInputs = rawInput.split(/[,\s]+/);
+        const validCveIds = [];
+        const invalidCveIds = [];
+        
+        // RegEx for validation
         const cvePattern = /^(?:CVE-)?(\d{4})-(\d{3,6})$/i; 
-        const match = cveId.match(cvePattern);
 
-        if (!match) {
-            // Invalid Format Error
-            resultsContainer.innerHTML = '<p style="color: red;">Invalid request: format should be similar to <strong>CVE-2025-12345</strong>.</p>';
+        cveInputs.forEach(input => {
+            const trimmedInput = input.trim();
+            if (!trimmedInput) return; // Skip empty strings
+            
+            const match = trimmedInput.match(cvePattern);
+
+            if (match) {
+                // It's a valid CVE format
+                let normalizedCve = trimmedInput.toUpperCase();
+                if (!normalizedCve.startsWith('CVE-')) {
+                    normalizedCve = `CVE-${normalizedCve}`;
+                }
+                validCveIds.push(normalizedCve);
+            } else {
+                // It's an invalid format
+                invalidCveIds.push(trimmedInput);
+            }
+        });
+
+        // 🚨 NEW: Handle Validation Results
+        if (validCveIds.length === 0) {
+            resultsContainer.innerHTML = `<p style="color: red;">No valid CVE IDs found. Invalid formats: ${invalidCveIds.join(', ')}</p>`;
             return;
         }
+        
+        resultsContainer.innerHTML = `<p class="loading">Searching for ${validCveIds.length} CVE(s)...</p>`;
 
-        // Prepend Logic: Ensure the final cveId starts with "CVE-"
-        if (!cveId.toUpperCase().startsWith('CVE-')) {
-            cveId = `CVE-${cveId}`;
+        // Show invalid entries as a warning if some were valid
+        if (invalidCveIds.length > 0) {
+            resultsContainer.innerHTML += `<p style="color: orange; font-size: 14px;">(Skipped invalid inputs: ${invalidCveIds.join(', ')})</p>`;
         }
         
-        resultsContainer.innerHTML = '<p class="loading">Searching...</p>';
+        // --- End New Parsing Logic ---
 
         try {
-            const response = await fetch(`/protections?cve_id=${encodeURIComponent(cveId)}`);
+            // 🚨 NEW: Send POST request with JSON body (array of CVEs)
+            const response = await fetch(`/protections`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ cve_ids: validCveIds }) // Send the array
+            });
+
             const data = await response.json();
 
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to fetch protections.');
             }
             
-            resultsContainer.innerHTML = '<h3>Search Results</h3>';
+            resultsContainer.innerHTML += '<h3>Search Results</h3>';
 
             if (!Array.isArray(data) || data.length === 0) {
-                resultsContainer.innerHTML += '<p>No protections found for this CVE.</p>';
-                const escapedCveId = escapeHTML(cveId);
-                const url = `https://nvd.nist.gov/vuln/detail/${escapedCveId}`;
-                resultsContainer.innerHTML += `<p>For more information, see <a href="${url}" target="_blank" rel="noopener noreferrer">${escapedCveId}</a></p>`;
+                resultsContainer.innerHTML += '<p>No protections found for the specified CVE(s).</p>';
                 return;
             }
 
@@ -125,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     cveInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter') {
-            searchProtections();
+            searchProteCTIONS(); // Typo in original file, fixed to searchProtections
         }
     });
 
@@ -148,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const secondaryEnabled = data.secondary_enabled;
 
             const finalConfigSummaryHTML = `
-                <strong>Status:</strong> 
+                <strong>Configuration Status:</strong> 
                 Infinity Portal: <span style="color: ${primaryEnabled ? 'green' : 'red'};">${primaryEnabled ? 'Enabled' : 'Disabled'}</span> | 
                 Smart-1 Cloud: <span style="color: ${secondaryEnabled ? 'green' : 'red'};">${secondaryEnabled ? 'Enabled' : 'Disabled'}</span>
             `;

@@ -133,42 +133,7 @@ def remote_login():
     else:
         return jsonify(data), 500
 
-
-## 3. Get Latest Publications Route (REQUIRED FOR UI STATUS)
-# Note: This route is kept primarily to support the consolidated /api_status
-@app.route('/publications', methods=['GET'])
-def get_publications():
-    """ Fetches publications using the internal token. """
-    auth_token = get_active_token()
-    
-    if not auth_token:
-        return jsonify({"error": "Primary API access is required for publications and token is missing."}), 401
-
-    try:
-        url = f"{BASE_URL}/app/ipsinfoapp/get_latest_publications/"
-        headers = {'Authorization': f'Bearer {auth_token}'}
-        
-        response = requests.get(url, headers=headers)
-        response.raise_for_status() 
-        return jsonify(response.json()), 200
-
-    except requests.exceptions.HTTPError as e:
-        app.logger.error(f"REMOTE HTTP Error on /publications: {e}")
-        status_code = e.response.status_code if e.response is not None else 500
-        return jsonify({
-            "error": "Remote service returned an error for publications", 
-            "details": str(e), 
-            "status_code": status_code
-        }), status_code
-
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Connection Error on /publications: {e}")
-        return jsonify({
-            "error": "Failed to fetch publications (Connection Error)", 
-            "details": str(e)
-        }), 503
-
-
+## 3. Consolidated API Status Check
 @app.route('/api_status', methods=['GET'])
 def get_api_status():
     """
@@ -179,21 +144,18 @@ def get_api_status():
         "secondary_status": "Not Configured",
         "publications": None,
         "ips_status": None,
-        # 🚨 NEW: Add the configuration flags
         "primary_enabled": PRIMARY_CONFIGURED,
         "secondary_enabled": SECONDARY_CONFIGURED
-        # ----------------------------------
     }
 
     # --- 1. Get Primary Publications Status ---
     if PRIMARY_CONFIGURED:
         auth_token = get_active_token()
         if auth_token:
-            # ... (rest of primary success logic) ...
             try:
                 url = f"{BASE_URL}/app/ipsinfoapp/get_latest_publications/"
                 headers = {'Authorization': f'Bearer {auth_token}'}
-                response = requests.get(url, headers=headers)
+                response = requests.get(url, headers=headers, timeout=5)
                 response.raise_for_status() 
                 
                 # Safely extract publications data (fixed logic)
@@ -216,7 +178,6 @@ def get_api_status():
 
     # --- 2. Get Secondary IPS Status ---
     if SECONDARY_CONFIGURED:
-        # ... (rest of secondary status check) ...
         try:
             secondary_client = SecondaryAPIClient(app.logger)
             status_data = secondary_client.get_ips_status()
@@ -233,98 +194,94 @@ def get_api_status():
 
     return jsonify(status_response), 200
 
-## 5. Get Protections by CVE Route (FALLBACK & SOURCE)
-@app.route('/protections', methods=['GET', 'POST'])
+
+## 4. Get Protections by CVE Route (HEAVILY MODIFIED FOR MULTI-CVE)
+@app.route('/protections', methods=['POST']) # Now only accepts POST
 def get_protections():
     """ 
-    Fetches protection info for a CVE. Tries primary. If fails OR unconfigured, 
-    falls back to S1C.
+    Fetches protection info for a list of CVEs.
+    Handles primary/secondary fallback and de-duplication.
     """
-    cve_id = None
-    if request.method == 'POST':
-        cve_id = request.get_json().get('cve_id')
-    elif request.method == 'GET':
-        cve_id = request.args.get('cve_id')
     
-    if not cve_id:
-        return jsonify({"error": "Missing 'cve_id' in JSON body or query parameters"}), 400
+    # --- 1. Get and Validate Input ---
+    data = request.get_json()
+    cve_ids = data.get('cve_ids')
+    
+    if not cve_ids or not isinstance(cve_ids, list):
+        return jsonify({"error": "Missing 'cve_ids' list in JSON body"}), 400
 
+    # Use a dict for de-duplication. Key: protection_name, Value: protection_object
+    found_protections = {} 
+    # Set of CVEs that returned no results from primary and need fallback
+    cves_needing_fallback = set()
+    
     auth_token = get_active_token()
-    primary_available = auth_token is not None 
-    primary_results = None
-    primary_error = None
+    primary_available = auth_token is not None
 
-    # --- 1. Try Primary API (Only if configured/authenticated) ---
+    # --- 2. Try Primary API for each CVE ---
     if primary_available:
-        try:
-            url = f"{BASE_URL}/app/ipsinfoapp/protections/by-cve/"
-            headers = {'Authorization': f'Bearer {auth_token}'}
-            params = {'cve_id': cve_id}
-            
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            
-            primary_results = response.json()
-            
-            if primary_results and isinstance(primary_results, list) and len(primary_results) > 0:
-                app.logger.info(f"Primary API found {len(primary_results)} results for {cve_id}.")
-                for item in primary_results:
-                    item["source_label"] = "IPS Protections Database - Infinity Portal"
-                return jsonify(primary_results), 200
-            
-            app.logger.info(f"Primary API returned no results for {cve_id}.")
+        app.logger.info(f"Primary search for {len(cve_ids)} CVEs.")
+        for cve_id in cve_ids:
+            try:
+                url = f"{BASE_URL}/app/ipsinfoapp/protections/by-cve/"
+                headers = {'Authorization': f'Bearer {auth_token}'}
+                params = {'cve_id': cve_id}
+                
+                response = requests.get(url, headers=headers, params=params, timeout=5)
+                response.raise_for_status()
+                
+                primary_results = response.json()
+                
+                if primary_results and isinstance(primary_results, list):
+                    app.logger.info(f"Primary API found {len(primary_results)} results for {cve_id}.")
+                    for item in primary_results:
+                        item["source_label"] = "IPS Protections Database - Infinity Portal"
+                        # Add to dict to de-duplicate
+                        found_protections[item['protection_name']] = item
+                else:
+                    # Primary API success but no results
+                    cves_needing_fallback.add(cve_id)
 
-        except requests.exceptions.RequestException as e:
-            primary_error = e 
-            app.logger.error(f"Primary API error for {cve_id}: {e}.")
+            except requests.exceptions.RequestException as e:
+                app.logger.error(f"Primary API error for {cve_id}: {e}. Marking for fallback.")
+                cves_needing_fallback.add(cve_id)
     else:
-        app.logger.info("Primary API skipped (missing config or token).")
+        app.logger.info("Primary API skipped (missing config or token). All CVEs sent to fallback.")
+        # Primary is not configured, all CVEs need fallback
+        cves_needing_fallback.update(cve_ids)
 
-    # --- 2. FALLBACK TO SECONDARY API (S1C) ---
-    if SECONDARY_CONFIGURED:
-        app.logger.info(f"Attempting Secondary API fallback for {cve_id}.")
-        try:
-            secondary_client = SecondaryAPIClient(app.logger)
-            secondary_results = secondary_client.search_threat_protections(cve_id)
-            
-            if secondary_results and isinstance(secondary_results, list) and len(secondary_results) > 0:
-                app.logger.info(f"Secondary API found {len(secondary_results)} results for {cve_id}.")
-                for item in secondary_results:
-                    item["source_label"] = "Smart-1 Cloud Threat Protection Lookup"
-                return jsonify(secondary_results), 200
-            
-            app.logger.info(f"Secondary API also found no results for {cve_id}.")
+    # --- 3. FALLBACK TO SECONDARY API (S1C) ---
+    if SECONDARY_CONFIGURED and cves_needing_fallback:
+        app.logger.info(f"Secondary fallback search for {len(cves_needing_fallback)} CVEs.")
+        secondary_client = SecondaryAPIClient(app.logger)
+        
+        for cve_id in cves_needing_fallback:
+            try:
+                secondary_results = secondary_client.search_threat_protections(cve_id)
+                
+                if secondary_results and isinstance(secondary_results, list):
+                    app.logger.info(f"Secondary API found {len(secondary_results)} results for {cve_id}.")
+                    for item in secondary_results:
+                        item["source_label"] = "Smart-1 Cloud Threat Protection Lookup"
+                        # Only add if not already found by primary
+                        if item['protection_name'] not in found_protections:
+                            found_protections[item['protection_name']] = item
+                            
+            except Exception as e:
+                app.logger.error(f"Secondary client search failed for {cve_id}: {e}")
+                # Continue to the next CVE
 
-        except Exception as secondary_error:
-            app.logger.error(f"Unexpected error during Secondary API process: {secondary_error}")
-            
-            if primary_error:
-                status_code = getattr(primary_error.response, 'status_code', 503) 
-                return jsonify({
-                    "error": "Both services failed.", 
-                    "primary_details": str(primary_error),
-                    "secondary_error": str(secondary_error)
-                }), status_code
-            
-            return jsonify({
-                "error": "Secondary service failed.",
-                "secondary_error": str(secondary_error)
-            }), 500
-
-
-    # --- 3. Final Failure / No Results ---
-    if primary_error:
-        status_code = getattr(primary_error.response, 'status_code', 503) 
-        return jsonify({
-            "error": "Primary service failed, and secondary service was unavailable or empty.", 
-            "primary_details": str(primary_error)
-        }), status_code
+    # --- 4. Final Results ---
+    # Convert the de-duplicated dictionary back to a list
+    final_results = list(found_protections.values())
     
-    if not primary_available and not SECONDARY_CONFIGURED:
-        return jsonify({"error": "No API services are configured or available."}), 500
+    app.logger.info(f"Total unique protections found: {len(final_results)}")
+    
+    # Return 200 OK with the final list (which may be empty)
+    return jsonify(final_results), 200
 
-    return jsonify([]), 200
 
 # --- Run the Flask App ---
 if __name__ == '__main__':
+    # Note: This block is for development only. Use Gunicorn for production.
     app.run(host='0.0.0.0', port=8080, debug=False)
