@@ -4,14 +4,25 @@ import time
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# 1. NEW IMPORT
+from flask_caching import Cache
 
-# --- NEW IMPORT ---
 from s1c_api import SecondaryAPIClient 
-# ------------------
 
 app = Flask(__name__)
+
+# 2. CONFIGURE CACHE
+# We set the cache type to FileSystemCache, which requires no external services.
+app.config["CACHE_TYPE"] = "FileSystemCache"
+# This directory will be created in your project's root to store cache files
+app.config["CACHE_DIR"] = os.path.join(os.getcwd(), 'app_cache') 
+# Default cache time: 24 hours (in seconds)
+app.config["CACHE_DEFAULT_TIMEOUT"] = 86400 
+cache = Cache(app)
+# -----------------------------
+
+# Load environment variables from .env file
+load_dotenv()
 
 # --- Global Token Storage ---
 TOKEN_INFO = {
@@ -24,8 +35,6 @@ TOKEN_INFO = {
 BASE_URL = os.getenv("IP_REMOTE_URL")
 CLIENT_ID = os.getenv("IP_CLIENT_ID")
 ACCESS_ID = os.getenv("IP_ACCESS_ID")
-
-# Define flag for primary configuration status
 PRIMARY_CONFIGURED = BASE_URL is not None and CLIENT_ID is not None and ACCESS_ID is not None
 
 # --- Configuration (Secondary API - Check for *any* config) ---
@@ -51,7 +60,7 @@ def _perform_login(force_new=False):
         login_url = f"{BASE_URL}/auth/external"
         payload = {"clientId": CLIENT_ID, "accessKey": ACCESS_ID}
         
-        response = requests.post(login_url, json=payload)
+        response = requests.post(login_url, json=payload, timeout=5)
         response.raise_for_status()
         response_data = response.json()
 
@@ -195,62 +204,88 @@ def get_api_status():
     return jsonify(status_response), 200
 
 
-## 4. Get Protections by CVE Route (HEAVILY MODIFIED FOR MULTI-CVE)
-@app.route('/protections', methods=['POST']) # Now only accepts POST
+# 🚨 3. NEW CACHED FUNCTION for Primary API
+@cache.memoize(timeout=86400) # 24 hours
+def fetch_primary_protection(cve_id, auth_token):
+    """
+    This function's result will be cached for 24 hours.
+    It ONLY queries the primary API.
+    The cache key is based on the function name and its arguments (cve_id, auth_token).
+    """
+    app.logger.info(f"CACHE MISS: Fetching {cve_id} from Primary API.")
+    try:
+        url = f"{BASE_URL}/app/ipsinfoapp/protections/by-cve/"
+        headers = {'Authorization': f'Bearer {auth_token}'}
+        params = {'cve_id': cve_id}
+        
+        response = requests.get(url, headers=headers, params=params, timeout=5)
+        response.raise_for_status()
+        
+        primary_results = response.json()
+        
+        if primary_results and isinstance(primary_results, list):
+            # Rule 2: Cache the result if found
+            return primary_results
+        else:
+            # Rule 1: Do not cache if not found
+            # We return a special marker to indicate "not found" vs "error"
+            return None 
+
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Primary API error for {cve_id}: {e}.")
+        # Raise exception to prevent caching a failure
+        raise
+
+
+## 4. Get Protections by CVE Route (MODIFIED TO USE CACHE)
+@app.route('/protections', methods=['POST'])
 def get_protections():
     """ 
     Fetches protection info for a list of CVEs.
-    Handles primary/secondary fallback and de-duplication.
+    NOW CHECKS CACHE FIRST.
     """
     
-    # --- 1. Get and Validate Input ---
     data = request.get_json()
     cve_ids = data.get('cve_ids')
     
     if not cve_ids or not isinstance(cve_ids, list):
         return jsonify({"error": "Missing 'cve_ids' list in JSON body"}), 400
 
-    # Use a dict for de-duplication. Key: protection_name, Value: protection_object
     found_protections = {} 
-    # Set of CVEs that returned no results from primary and need fallback
     cves_needing_fallback = set()
     
     auth_token = get_active_token()
     primary_available = auth_token is not None
 
-    # --- 2. Try Primary API for each CVE ---
+    # --- 2. Try Primary API (using the cache) ---
     if primary_available:
         app.logger.info(f"Primary search for {len(cve_ids)} CVEs.")
         for cve_id in cve_ids:
             try:
-                url = f"{BASE_URL}/app/ipsinfoapp/protections/by-cve/"
-                headers = {'Authorization': f'Bearer {auth_token}'}
-                params = {'cve_id': cve_id}
+                # 🚨 5. CALL THE CACHED FUNCTION
+                # If cached, this is instant (from file). If not, it runs the function.
+                primary_results = fetch_primary_protection(cve_id, auth_token)
                 
-                response = requests.get(url, headers=headers, params=params, timeout=5)
-                response.raise_for_status()
-                
-                primary_results = response.json()
-                
-                if primary_results and isinstance(primary_results, list):
+                if primary_results:
+                    # On a cache hit, the function doesn't run, so we don't see "CACHE MISS"
                     app.logger.info(f"Primary API found {len(primary_results)} results for {cve_id}.")
                     for item in primary_results:
                         item["source_label"] = "IPS Protections Database - Infinity Portal"
-                        # Add to dict to de-duplicate
                         found_protections[item['protection_name']] = item
                 else:
-                    # Primary API success but no results
+                    # Result was 'None', meaning "not found" (Rule 1)
                     cves_needing_fallback.add(cve_id)
 
-            except requests.exceptions.RequestException as e:
-                app.logger.error(f"Primary API error for {cve_id}: {e}. Marking for fallback.")
+            except Exception as e:
+                # Function failed (e.g., API was down), mark for fallback
+                app.logger.error(f"Primary function failed for {cve_id}: {e}. Marking for fallback.")
                 cves_needing_fallback.add(cve_id)
     else:
         app.logger.info("Primary API skipped (missing config or token). All CVEs sent to fallback.")
-        # Primary is not configured, all CVEs need fallback
         cves_needing_fallback.update(cve_ids)
 
     # --- 3. FALLBACK TO SECONDARY API (S1C) ---
+    # (This section remains unchanged for Batch 1. S1C is not yet cached)
     if SECONDARY_CONFIGURED and cves_needing_fallback:
         app.logger.info(f"Secondary fallback search for {len(cves_needing_fallback)} CVEs.")
         secondary_client = SecondaryAPIClient(app.logger)
@@ -263,21 +298,17 @@ def get_protections():
                     app.logger.info(f"Secondary API found {len(secondary_results)} results for {cve_id}.")
                     for item in secondary_results:
                         item["source_label"] = "Smart-1 Cloud Threat Protection Lookup"
-                        # Only add if not already found by primary
                         if item['protection_name'] not in found_protections:
                             found_protections[item['protection_name']] = item
                             
             except Exception as e:
                 app.logger.error(f"Secondary client search failed for {cve_id}: {e}")
-                # Continue to the next CVE
+                continue
 
     # --- 4. Final Results ---
-    # Convert the de-duplicated dictionary back to a list
     final_results = list(found_protections.values())
-    
     app.logger.info(f"Total unique protections found: {len(final_results)}")
     
-    # Return 200 OK with the final list (which may be empty)
     return jsonify(final_results), 200
 
 
