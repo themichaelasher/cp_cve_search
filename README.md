@@ -95,11 +95,13 @@ user$ python -m venv venv
 user$ . venv/bin/activate
 (venv) user$ pip install -r requirements.txt
 (venv) user$ python app.py
-* Serving Flask app 'app'
- * Debug mode: off
-WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:8080
+[2026-03-17 19:57:43 +0000] [1] [INFO] Starting gunicorn 23.0.0
+[2026-03-17 19:57:43 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)
+[2026-03-17 19:57:43 +0000] [1] [INFO] Using worker: sync
+[2026-03-17 19:57:43 +0000] [7] [INFO] Booting worker with pid: 7
+[2026-03-17 19:57:43 +0000] [8] [INFO] Booting worker with pid: 8
+[2026-03-17 19:57:43 +0000] [9] [INFO] Booting worker with pid: 9
+[2026-03-17 19:57:43 +0000] [10] [INFO] Booting worker with pid: 10
 Press CTRL+C to quit
 ```
 
