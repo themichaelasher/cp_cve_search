@@ -20,4 +20,5 @@ EXPOSE 8080
 
 # Step 7: Define the command to run your application
 # This runs 'python app.py' when the container starts
-CMD ["python", "app.py"]
+# CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app", "--workers", "4"]
